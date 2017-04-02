@@ -43,7 +43,7 @@ var _ = Describe("ContainerProvider", func() {
 		fakeDBVolumeFactory         *dbngfakes.FakeVolumeFactory
 		fakeDBResourceCacheFactory  *dbngfakes.FakeResourceCacheFactory
 		fakeDBResourceConfigFactory *dbngfakes.FakeResourceConfigFactory
-		fakeLockDB          *workerfakes.FakeLockDB
+		fakeLockDB                  *workerfakes.FakeLockDB
 		fakeWorker                  *workerfakes.FakeWorker
 
 		containerProvider        ContainerProvider

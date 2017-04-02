@@ -142,10 +142,7 @@ var _ = BeforeEach(func() {
 
 	constructedEventHandler = &fakeEventHandlerFactory{}
 
-	logger = lagertest.NewTestLogger("callbacks")
-
-	sink = lager.NewReconfigurableSink(lager.NewWriterSink(GinkgoWriter, lager.DEBUG), lager.DEBUG)
-	logger.RegisterSink(sink)
+	logger = lagertest.NewTestLogger("api")
 
 	expire = 24 * time.Hour
 

@@ -24,11 +24,6 @@ type TeamDB interface {
 	OrderPipelines([]string) error
 
 	GetTeam() (SavedTeam, bool, error)
-	UpdateBasicAuth(basicAuth *BasicAuth) (SavedTeam, error)
-	UpdateGitHubAuth(gitHubAuth *GitHubAuth) (SavedTeam, error)
-	UpdateUAAAuth(uaaAuth *UAAAuth) (SavedTeam, error)
-	UpdateGenericOAuth(genericOAuth *GenericOAuth) (SavedTeam, error)
-
 	GetConfig(pipelineName string) (atc.Config, atc.RawConfig, ConfigVersion, error)
 	SaveConfigToBeDeprecated(string, atc.Config, ConfigVersion, PipelinePausedState) (SavedPipeline, bool, error)
 
@@ -592,76 +587,48 @@ func (db *teamDB) queryTeam(query string, params []interface{}) (SavedTeam, erro
 	return savedTeam, nil
 }
 
-func (db *teamDB) UpdateBasicAuth(basicAuth *BasicAuth) (SavedTeam, error) {
-	encryptedBasicAuth, err := basicAuth.EncryptedJSON()
-	if err != nil {
-		return SavedTeam{}, err
-	}
-
-	query := `
-		UPDATE teams
-		SET basic_auth = $1
-		WHERE LOWER(name) = LOWER($2)
-		RETURNING id, name, admin, basic_auth, github_auth, uaa_auth, genericoauth_auth
-	`
-
-	params := []interface{}{encryptedBasicAuth, db.teamName}
-
-	return db.queryTeam(query, params)
-}
-
-func (db *teamDB) UpdateGitHubAuth(gitHubAuth *GitHubAuth) (SavedTeam, error) {
-	var auth *GitHubAuth
-	if gitHubAuth != nil && gitHubAuth.ClientID != "" && gitHubAuth.ClientSecret != "" {
-		auth = gitHubAuth
-	}
-	jsonEncodedGitHubAuth, err := json.Marshal(auth)
-	if err != nil {
-		return SavedTeam{}, err
-	}
-
-	query := `
-		UPDATE teams
-		SET github_auth = $1
-		WHERE LOWER(name) = LOWER($2)
-		RETURNING id, name, admin, basic_auth, github_auth, uaa_auth, genericoauth_auth
-	`
-	params := []interface{}{string(jsonEncodedGitHubAuth), db.teamName}
-	return db.queryTeam(query, params)
-}
-
-func (db *teamDB) UpdateUAAAuth(uaaAuth *UAAAuth) (SavedTeam, error) {
-	jsonEncodedUAAAuth, err := json.Marshal(uaaAuth)
-	if err != nil {
-		return SavedTeam{}, err
-	}
-
-	query := `
-		UPDATE teams
-		SET uaa_auth = $1
-		WHERE LOWER(name) = LOWER($2)
-		RETURNING id, name, admin, basic_auth, github_auth, uaa_auth, genericoauth_auth
-	`
-	params := []interface{}{string(jsonEncodedUAAAuth), db.teamName}
-	return db.queryTeam(query, params)
-}
-
-func (db *teamDB) UpdateGenericOAuth(genericOAuth *GenericOAuth) (SavedTeam, error) {
-	jsonEncodedGenericOAuth, err := json.Marshal(genericOAuth)
-	if err != nil {
-		return SavedTeam{}, err
-	}
-
-	query := `
-		UPDATE teams
-		SET genericoauth_auth = $1
-		WHERE LOWER(name) = LOWER($2)
-		RETURNING id, name, admin, basic_auth, github_auth, uaa_auth, genericoauth_auth
-	`
-	params := []interface{}{string(jsonEncodedGenericOAuth), db.teamName}
-	return db.queryTeam(query, params)
-}
-
+//func (db *teamDB) queryTeam(query string, params []interface{}) (SavedTeam, error) {
+//	var basicAuth, auth sql.NullString
+//	var savedTeam SavedTeam
+//
+//	tx, err := db.conn.Begin()
+//	if err != nil {
+//		return SavedTeam{}, err
+//	}
+//	defer tx.Rollback()
+//
+//	err = tx.QueryRow(query, params...).Scan(
+//		&savedTeam.ID,
+//		&savedTeam.Name,
+//		&savedTeam.Admin,
+//		&basicAuth,
+//		&auth,
+//	)
+//	if err != nil {
+//		return savedTeam, err
+//	}
+//	err = tx.Commit()
+//	if err != nil {
+//		return savedTeam, err
+//	}
+//
+//	if basicAuth.Valid {
+//		err = json.Unmarshal([]byte(basicAuth.String), &savedTeam.BasicAuth)
+//
+//		if err != nil {
+//			return savedTeam, err
+//		}
+//	}
+//
+//	if auth.Valid {
+//		err = json.Unmarshal([]byte(auth.String), &savedTeam.Auth)
+//		if err != nil {
+//			return savedTeam, err
+//		}
+//	}
+//	return savedTeam, nil
+//}
+//
 func (db *teamDB) CreateOneOffBuild() (Build, error) {
 	tx, err := db.conn.Begin()
 	if err != nil {

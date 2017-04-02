@@ -7,7 +7,7 @@ import (
 
 	"code.cloudfoundry.org/lager"
 	"github.com/concourse/atc/auth/provider"
-	"github.com/concourse/atc/db"
+	"github.com/concourse/atc/dbng"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/tedsuo/rata"
 )
@@ -17,13 +17,13 @@ var SigningMethod = jwt.SigningMethodRS256
 //go:generate counterfeiter . ProviderFactory
 
 type ProviderFactory interface {
-	GetProvider(db.SavedTeam, string) (provider.Provider, bool, error)
+	GetProvider(dbng.Team, string) (provider.Provider, bool, error)
 }
 
 func NewOAuthHandler(
 	logger lager.Logger,
 	providerFactory ProviderFactory,
-	teamDBFactory db.TeamDBFactory,
+	teamFactory dbng.TeamFactory,
 	signingKey *rsa.PrivateKey,
 	expire time.Duration,
 ) (http.Handler, error) {
@@ -34,14 +34,14 @@ func NewOAuthHandler(
 				logger.Session("oauth-begin"),
 				providerFactory,
 				signingKey,
-				teamDBFactory,
+				teamFactory,
 				expire,
 			),
 			OAuthCallback: NewOAuthCallbackHandler(
 				logger.Session("oauth-callback"),
 				providerFactory,
 				signingKey,
-				teamDBFactory,
+				teamFactory,
 				expire,
 			),
 			LogOut: NewLogOutHandler(

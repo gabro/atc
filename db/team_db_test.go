@@ -269,10 +269,7 @@ var _ = Describe("TeamDB", func() {
 	})
 
 	Describe("Updating Auth", func() {
-		var basicAuth *db.BasicAuth
-		var gitHubAuth *db.GitHubAuth
-		var uaaAuth *db.UAAAuth
-		var genericOAuth *db.GenericOAuth
+		var basicAuth *atc.BasicAuth
 
 		BeforeEach(func() {
 			basicAuth = &db.BasicAuth{

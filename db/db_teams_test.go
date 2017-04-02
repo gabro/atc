@@ -2,6 +2,7 @@ package db_test
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -24,6 +25,7 @@ var _ = Describe("SQL DB Teams", func() {
 	var dbngConn dbng.Conn
 	var listener *pq.Listener
 
+	var authProvider map[string]*json.RawMessage
 	var database db.DB
 	var workerFactory dbng.WorkerFactory
 	var teamDBFactory db.TeamDBFactory
@@ -75,57 +77,23 @@ var _ = Describe("SQL DB Teams", func() {
 					BasicAuthUsername: "fake user",
 					BasicAuthPassword: "no, bad",
 				},
-				GitHubAuth: &db.GitHubAuth{
-					ClientID:      "fake id",
-					ClientSecret:  "some secret",
-					Organizations: []string{"a", "b", "c"},
-					Teams: []db.GitHubTeam{
-						{
-							OrganizationName: "org1",
-							TeamName:         "teama",
-						},
-						{
-							OrganizationName: "org2",
-							TeamName:         "teamb",
-						},
-					},
-					Users: []string{"user1", "user2", "user3"},
-				},
 			}
 			savedTeam2, err := database.CreateTeam(team2)
 			Expect(err).NotTo(HaveOccurred())
 
+			data := []byte(`{"target": "localhost"}`)
+			authProvider["fake-provider"] = (*json.RawMessage)(&data)
+
 			team3 := db.Team{
 				Name: "predators",
-				UAAAuth: &db.UAAAuth{
-					ClientID:     "fake id",
-					ClientSecret: "some secret",
-					CFSpaces:     []string{"myspace"},
-					AuthURL:      "http://auth.url",
-					TokenURL:     "http://token.url",
-					CFURL:        "http://api.url",
-				},
+				Auth: authProvider,
 			}
 			savedTeam3, err := database.CreateTeam(team3)
 			Expect(err).NotTo(HaveOccurred())
 
-			team4 := db.Team{
-				Name: "cyborgs",
-				GenericOAuth: &db.GenericOAuth{
-					DisplayName:   "Cyborgs",
-					ClientID:      "some random guid",
-					ClientSecret:  "don't tell anyone",
-					AuthURL:       "https://auth.url",
-					AuthURLParams: map[string]string{"allow_humans": "false"},
-					Scope:         "readonly",
-				},
-			}
-			savedTeam4, err := database.CreateTeam(team4)
-			Expect(err).NotTo(HaveOccurred())
-
 			actualTeams, err := database.GetTeams()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(actualTeams).To(ConsistOf(savedTeam1, savedTeam2, savedTeam3, savedTeam4))
+			Expect(actualTeams).To(ConsistOf(savedTeam1, savedTeam2, savedTeam3))
 		})
 	})
 
@@ -186,9 +154,7 @@ var _ = Describe("SQL DB Teams", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(expectedSavedTeam.Team.Admin).To(Equal(expectedTeam.Admin))
 			Expect(expectedSavedTeam.Team.BasicAuth).To(Equal(expectedTeam.BasicAuth))
-			Expect(expectedSavedTeam.Team.GitHubAuth).To(Equal(expectedTeam.GitHubAuth))
-			Expect(expectedSavedTeam.Team.UAAAuth).To(Equal(expectedTeam.UAAAuth))
-			Expect(expectedSavedTeam.Team.GenericOAuth).To(Equal(expectedTeam.GenericOAuth))
+			Expect(expectedSavedTeam.Team.Auth).To(Equal(expectedTeam.Auth))
 			Expect(expectedSavedTeam.Team.Name).To(Equal("AvengerS"))
 
 			savedTeam, found, err := teamDBFactory.GetTeamDB("aVengers").GetTeam()
@@ -200,7 +166,7 @@ var _ = Describe("SQL DB Teams", func() {
 		It("saves a team to the db with basic auth", func() {
 			expectedTeam := db.Team{
 				Name: "avengers",
-				BasicAuth: &db.BasicAuth{
+				BasicAuth: &atc.BasicAuth{
 					BasicAuthUsername: "fake user",
 					BasicAuthPassword: "no, bad",
 				},
@@ -219,25 +185,12 @@ var _ = Describe("SQL DB Teams", func() {
 				[]byte(expectedTeam.BasicAuth.BasicAuthPassword))).To(BeNil())
 		})
 
-		It("saves a team to the db with GitHub auth", func() {
+		It("saves a team to the db with a provider auth", func() {
+			data := []byte(`{"key": "authentication-value"}`)
+			authProvider["fake-provider"] = (*json.RawMessage)(&data)
 			expectedTeam := db.Team{
 				Name: "avengers",
-				GitHubAuth: &db.GitHubAuth{
-					ClientID:      "fake id",
-					ClientSecret:  "some secret",
-					Organizations: []string{"a", "b", "c"},
-					Teams: []db.GitHubTeam{
-						{
-							OrganizationName: "org1",
-							TeamName:         "teama",
-						},
-						{
-							OrganizationName: "org2",
-							TeamName:         "teamb",
-						},
-					},
-					Users: []string{"user1", "user2", "user3"},
-				},
+				Auth: authProvider,
 			}
 			expectedSavedTeam, err := database.CreateTeam(expectedTeam)
 			Expect(err).NotTo(HaveOccurred())
@@ -248,55 +201,7 @@ var _ = Describe("SQL DB Teams", func() {
 			Expect(found).To(BeTrue())
 			Expect(savedTeam).To(Equal(expectedSavedTeam))
 
-			Expect(savedTeam.GitHubAuth).To(Equal(expectedTeam.GitHubAuth))
-		})
-
-		It("saves a team to the db with CF auth", func() {
-			expectedTeam := db.Team{
-				Name: "avengers",
-				UAAAuth: &db.UAAAuth{
-					ClientID:     "fake id",
-					ClientSecret: "some secret",
-					CFSpaces:     []string{"myspace"},
-					AuthURL:      "http://auth.url",
-					TokenURL:     "http://token.url",
-					CFURL:        "http://api.url",
-				},
-			}
-			expectedSavedTeam, err := database.CreateTeam(expectedTeam)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(expectedSavedTeam.Team).To(Equal(expectedTeam))
-
-			savedTeam, found, err := teamDBFactory.GetTeamDB("avengers").GetTeam()
-			Expect(err).NotTo(HaveOccurred())
-			Expect(found).To(BeTrue())
-			Expect(savedTeam).To(Equal(expectedSavedTeam))
-
-			Expect(savedTeam.UAAAuth).To(Equal(expectedTeam.UAAAuth))
-		})
-
-		It("saves a team to the db with Generic OAuth auth", func() {
-			expectedTeam := db.Team{
-				Name: "cyborgs",
-				GenericOAuth: &db.GenericOAuth{
-					DisplayName:   "Cyborgs",
-					ClientID:      "some random guid",
-					ClientSecret:  "don't tell anyone",
-					AuthURL:       "https://auth.url",
-					AuthURLParams: map[string]string{"allow_humans": "false"},
-					Scope:         "readonly",
-				},
-			}
-			expectedSavedTeam, err := database.CreateTeam(expectedTeam)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(expectedSavedTeam.Team).To(Equal(expectedTeam))
-
-			savedTeam, found, err := teamDBFactory.GetTeamDB("cyborgs").GetTeam()
-			Expect(err).NotTo(HaveOccurred())
-			Expect(found).To(BeTrue())
-			Expect(savedTeam).To(Equal(expectedSavedTeam))
-
-			Expect(savedTeam.GenericOAuth).To(Equal(expectedTeam.GenericOAuth))
+			Expect(savedTeam.Auth).To(Equal(expectedTeam.Auth))
 		})
 	})
 

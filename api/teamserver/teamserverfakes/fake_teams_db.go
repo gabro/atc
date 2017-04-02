@@ -4,8 +4,10 @@ package teamserverfakes
 import (
 	"sync"
 
+	"github.com/concourse/atc"
 	"github.com/concourse/atc/api/teamserver"
 	"github.com/concourse/atc/db"
+	"github.com/concourse/atc/dbng"
 )
 
 type FakeTeamsDB struct {
@@ -20,17 +22,17 @@ type FakeTeamsDB struct {
 		result1 []db.SavedTeam
 		result2 error
 	}
-	CreateTeamStub        func(data db.Team) (db.SavedTeam, error)
+	CreateTeamStub        func(atc.Team) (dbng.Team, error)
 	createTeamMutex       sync.RWMutex
 	createTeamArgsForCall []struct {
-		data db.Team
+		arg1 atc.Team
 	}
 	createTeamReturns struct {
-		result1 db.SavedTeam
+		result1 dbng.Team
 		result2 error
 	}
 	createTeamReturnsOnCall map[int]struct {
-		result1 db.SavedTeam
+		result1 dbng.Team
 		result2 error
 	}
 	DeleteTeamByNameStub        func(teamName string) error
@@ -91,16 +93,16 @@ func (fake *FakeTeamsDB) GetTeamsReturnsOnCall(i int, result1 []db.SavedTeam, re
 	}{result1, result2}
 }
 
-func (fake *FakeTeamsDB) CreateTeam(data db.Team) (db.SavedTeam, error) {
+func (fake *FakeTeamsDB) CreateTeam(arg1 atc.Team) (dbng.Team, error) {
 	fake.createTeamMutex.Lock()
 	ret, specificReturn := fake.createTeamReturnsOnCall[len(fake.createTeamArgsForCall)]
 	fake.createTeamArgsForCall = append(fake.createTeamArgsForCall, struct {
-		data db.Team
-	}{data})
-	fake.recordInvocation("CreateTeam", []interface{}{data})
+		arg1 atc.Team
+	}{arg1})
+	fake.recordInvocation("CreateTeam", []interface{}{arg1})
 	fake.createTeamMutex.Unlock()
 	if fake.CreateTeamStub != nil {
-		return fake.CreateTeamStub(data)
+		return fake.CreateTeamStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -114,30 +116,30 @@ func (fake *FakeTeamsDB) CreateTeamCallCount() int {
 	return len(fake.createTeamArgsForCall)
 }
 
-func (fake *FakeTeamsDB) CreateTeamArgsForCall(i int) db.Team {
+func (fake *FakeTeamsDB) CreateTeamArgsForCall(i int) atc.Team {
 	fake.createTeamMutex.RLock()
 	defer fake.createTeamMutex.RUnlock()
-	return fake.createTeamArgsForCall[i].data
+	return fake.createTeamArgsForCall[i].arg1
 }
 
-func (fake *FakeTeamsDB) CreateTeamReturns(result1 db.SavedTeam, result2 error) {
+func (fake *FakeTeamsDB) CreateTeamReturns(result1 dbng.Team, result2 error) {
 	fake.CreateTeamStub = nil
 	fake.createTeamReturns = struct {
-		result1 db.SavedTeam
+		result1 dbng.Team
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *FakeTeamsDB) CreateTeamReturnsOnCall(i int, result1 db.SavedTeam, result2 error) {
+func (fake *FakeTeamsDB) CreateTeamReturnsOnCall(i int, result1 dbng.Team, result2 error) {
 	fake.CreateTeamStub = nil
 	if fake.createTeamReturnsOnCall == nil {
 		fake.createTeamReturnsOnCall = make(map[int]struct {
-			result1 db.SavedTeam
+			result1 dbng.Team
 			result2 error
 		})
 	}
 	fake.createTeamReturnsOnCall[i] = struct {
-		result1 db.SavedTeam
+		result1 dbng.Team
 		result2 error
 	}{result1, result2}
 }

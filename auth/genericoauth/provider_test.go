@@ -9,7 +9,6 @@ import (
 
 	"github.com/concourse/atc/auth/genericoauth"
 	"github.com/concourse/atc/auth/provider"
-	"github.com/concourse/atc/db"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -17,7 +16,7 @@ import (
 
 var _ = Describe("Generic OAuth Provider", func() {
 	var (
-		team                db.SavedTeam
+		authConfig          genericoauth.GenericOAuthFlag
 		redirectURI         string
 		goaProvider         provider.Provider
 		state               string
@@ -25,21 +24,16 @@ var _ = Describe("Generic OAuth Provider", func() {
 		genericTeamProvider genericoauth.GenericTeamProvider
 	)
 
-	JustBeforeEach(func() {
-		genericTeamProvider = genericoauth.GenericTeamProvider{}
-		goaProvider, found = genericTeamProvider.ProviderConstructor(team, redirectURI)
-		Expect(found).To(BeTrue())
-	})
-
 	BeforeEach(func() {
-		team = db.SavedTeam{
-			Team: db.Team{
-				Name:         "some-team",
-				GenericOAuth: &db.GenericOAuth{},
-			},
-		}
 		redirectURI = "redirect-uri"
 		state = "some-random-guid"
+		authConfig = genericoauth.GenericOAuthFlag{}
+	})
+
+	JustBeforeEach(func() {
+		genericTeamProvider = genericoauth.GenericTeamProvider{}
+		goaProvider, found = genericTeamProvider.ProviderConstructor(authConfig, redirectURI)
+		Expect(found).To(BeTrue())
 	})
 
 	It("constructs HTTP client with disable keep alive context", func() {
@@ -71,13 +65,9 @@ var _ = Describe("Generic OAuth Provider", func() {
 	Context("Auth URL params are configured", func() {
 		BeforeEach(func() {
 			redirectURI = "redirect-uri"
-			team = db.SavedTeam{
-				Team: db.Team{
-					Name: "some-team",
-					GenericOAuth: &db.GenericOAuth{
-						AuthURLParams: map[string]string{"param1": "value1", "param2": "value2"},
-					},
-				},
+
+			authConfig = genericoauth.GenericOAuthFlag{
+				AuthURLParams: map[string]string{"param1": "value1", "param2": "value2"},
 			}
 		})
 

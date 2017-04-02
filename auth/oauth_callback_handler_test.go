@@ -29,7 +29,8 @@ import (
 	"github.com/concourse/atc/auth/provider"
 	"github.com/concourse/atc/auth/provider/providerfakes"
 	"github.com/concourse/atc/db"
-	"github.com/concourse/atc/db/dbfakes"
+	"github.com/concourse/atc/dbng"
+	"github.com/concourse/atc/dbng/dbngfakes"
 )
 
 type testCookieJar struct {
@@ -60,7 +61,8 @@ var _ = Describe("OAuthCallbackHandler", func() {
 
 		fakeProviderFactory *authfakes.FakeProviderFactory
 
-		fakeTeamDB *dbfakes.FakeTeamDB
+		fakeTeam        *dbngfakes.FakeTeam
+		fakeTeamFactory *dbngfakes.FakeTeamFactory
 
 		signingKey *rsa.PrivateKey
 
@@ -82,7 +84,7 @@ var _ = Describe("OAuthCallbackHandler", func() {
 		Expect(err).ToNot(HaveOccurred())
 		expire = 24 * time.Hour
 
-		fakeProviderFactory.GetProviderStub = func(team db.SavedTeam, providerName string) (provider.Provider, bool, error) {
+		fakeProviderFactory.GetProviderStub = func(team dbng.Team, providerName string) (provider.Provider, bool, error) {
 			if providerName == "some-provider" {
 				return fakeProvider, true, nil
 			}
@@ -98,15 +100,14 @@ var _ = Describe("OAuthCallbackHandler", func() {
 			},
 		}
 
-		fakeTeamDBFactory := new(dbfakes.FakeTeamDBFactory)
-		fakeTeamDB = new(dbfakes.FakeTeamDB)
-		fakeTeamDB.GetTeamReturns(team, true, nil)
-		fakeTeamDBFactory.GetTeamDBReturns(fakeTeamDB)
+		fakeTeamFactory := new(dbngfakes.FakeTeamFactory)
+		fakeTeam = new(dbngfakes.FakeTeam)
+		fakeTeamFactory.FindTeamReturns(fakeTeam, true, nil)
 
 		handler, err := auth.NewOAuthHandler(
 			lagertest.NewTestLogger("test"),
 			fakeProviderFactory,
-			fakeTeamDBFactory,
+			fakeTeamFactory,
 			signingKey,
 			expire,
 		)
@@ -330,7 +331,7 @@ var _ = Describe("OAuthCallbackHandler", func() {
 
 				Context("when the team cannot be found", func() {
 					BeforeEach(func() {
-						fakeTeamDB.GetTeamReturns(db.SavedTeam{}, false, nil)
+						fakeTeamFactory.FindTeamReturns(fakeTeam, false, nil)
 					})
 
 					It("returns Not Found", func() {

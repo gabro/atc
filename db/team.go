@@ -3,49 +3,23 @@ package db
 import (
 	"encoding/json"
 
-	"golang.org/x/crypto/bcrypt"
+	"github.com/concourse/atc"
 )
 
 type Team struct {
 	Name  string
 	Admin bool
 
-	BasicAuth    *BasicAuth    `json:"basic_auth"`
+	BasicAuth    *atc.BasicAuth `json:"basic_auth"`
+	Auth         map[string]*json.RawMessage
 	GitHubAuth   *GitHubAuth   `json:"github_auth"`
 	UAAAuth      *UAAAuth      `json:"uaa_auth"`
 	GenericOAuth *GenericOAuth `json:"genericoauth_auth"`
 }
 
-func (auth *BasicAuth) EncryptedJSON() (string, error) {
-	var result *BasicAuth
-	if auth != nil && auth.BasicAuthUsername != "" && auth.BasicAuthPassword != "" {
-		encryptedPw, err := bcrypt.GenerateFromPassword([]byte(auth.BasicAuthPassword), 4)
-		if err != nil {
-			return "", err
-		}
-		result = &BasicAuth{
-			BasicAuthPassword: string(encryptedPw),
-			BasicAuthUsername: auth.BasicAuthUsername,
-		}
-	}
-
-	json, err := json.Marshal(result)
-	return string(json), err
-}
-
-type GitHubTeam struct {
-	OrganizationName string `json:"organization_name"`
-	TeamName         string `json:"team_name"`
-}
-
 type SavedTeam struct {
 	ID int
 	Team
-}
-
-type BasicAuth struct {
-	BasicAuthUsername string `json:"basic_auth_username"`
-	BasicAuthPassword string `json:"basic_auth_password"`
 }
 
 type GitHubAuth struct {
@@ -77,4 +51,9 @@ type GenericOAuth struct {
 	ClientSecret  string            `json:"client_secret"`
 	DisplayName   string            `json:"display_name"`
 	Scope         string            `json:"scope"`
+}
+
+type GitHubTeam struct {
+	OrganizationName string `json:"organization_name"`
+	TeamName         string `json:"team_name"`
 }

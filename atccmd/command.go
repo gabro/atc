@@ -54,13 +54,16 @@ import (
 
 	_ "github.com/concourse/atc/auth/genericoauth"
 	_ "github.com/concourse/atc/auth/github"
-	_ "github.com/concourse/atc/auth/uaa"
+	"github.com/concourse/atc/auth/provider"
 )
 
 type ATCCommand struct {
 	Logger LagerFlag
 
 	Authentication atc.AuthFlags `group:"Authentication"`
+
+	// populated by main.go as providers inject their flags dynamically
+	ProviderAuth map[string]provider.AuthConfig
 
 	BindIP   IPFlag `long:"bind-ip"   default:"0.0.0.0" description:"IP address on which to listen for web traffic."`
 	BindPort uint16 `long:"bind-port" default:"8080"    description:"Port on which to listen for HTTP traffic."`
@@ -263,7 +266,7 @@ func (cmd *ATCCommand) Runner(args []string) (ifrit.Runner, error) {
 	oauthHandler, err := auth.NewOAuthHandler(
 		logger,
 		providerFactory,
-		teamDBFactory,
+		dbTeamFactory,
 		signingKey,
 		cmd.AuthDuration,
 	)
@@ -511,45 +514,51 @@ func (cmd *ATCCommand) validate() error {
 		)
 	}
 
-	if cmd.Authentication.GitHubAuth.IsConfigured() {
-		if cmd.ExternalURL.URL() == nil {
-			errs = multierror.Append(
-				errs,
-				errors.New("must specify --external-url to use OAuth"),
-			)
-		}
-
-		err := cmd.Authentication.GitHubAuth.Validate()
-		if err != nil {
-			errs = multierror.Append(errs, err)
-		}
-	}
-
-	if cmd.Authentication.GenericOAuth.IsConfigured() {
-		err := cmd.Authentication.GenericOAuth.Validate()
-		if err != nil {
-			errs = multierror.Append(errs, err)
-		}
-	}
-
-	if cmd.Authentication.BasicAuth.IsConfigured() {
-		err := cmd.Authentication.BasicAuth.Validate()
-		if err != nil {
-			errs = multierror.Append(errs, err)
-		}
-	}
-
-	if cmd.Authentication.UAAAuth.IsConfigured() {
-		err := cmd.Authentication.UAAAuth.Validate()
-		if err != nil {
-			errs = multierror.Append(errs, err)
-		}
-	}
-
-	tlsFlagCount := 0
-	if cmd.TLSBindPort != 0 {
-		tlsFlagCount++
-	}
+	//	for _, p := range provider.GetProviders() {
+	//		if
+	//	}
+	//
+	//	// Just loop through AuthConfig map to see if configured
+	//
+	//	if cmd.Authentication.GitHubAuth.IsConfigured() {
+	//		if cmd.ExternalURL.URL() == nil {
+	//			errs = multierror.Append(
+	//				errs,
+	//				errors.New("must specify --external-url to use OAuth"),
+	//			)
+	//		}
+	//
+	//		err := cmd.Authentication.GitHubAuth.Validate()
+	//		if err != nil {
+	//			errs = multierror.Append(errs, err)
+	//		}
+	//	}
+	//
+	//	if cmd.Authentication.GenericOAuth.IsConfigured() {
+	//		err := cmd.Authentication.GenericOAuth.Validate()
+	//		if err != nil {
+	//			errs = multierror.Append(errs, err)
+	//		}
+	//	}
+	//
+	//	if cmd.Authentication.BasicAuth.IsConfigured() {
+	//		err := cmd.Authentication.BasicAuth.Validate()
+	//		if err != nil {
+	//			errs = multierror.Append(errs, err)
+	//		}
+	//	}
+	//
+	//	if cmd.Authentication.UAAAuth.IsConfigured() {
+	//		err := cmd.Authentication.UAAAuth.Validate()
+	//		if err != nil {
+	//			errs = multierror.Append(errs, err)
+	//		}
+	//	}
+	//
+	//	tlsFlagCount := 0
+	//	if cmd.TLSBindPort != 0 {
+	//		tlsFlagCount++
+	//	}
 	if cmd.TLSCert != "" {
 		tlsFlagCount++
 	}
@@ -743,6 +752,11 @@ func (cmd *ATCCommand) configureAuthForDefaultTeam(teamDBFactory db.TeamDBFactor
 	if err != nil {
 		return err
 	}
+
+	// Instead of checking if each auth provider is configured like it is right now, we will
+	// have a AuthConfig map (passed in from main.go) which we can loop through and instead of
+	// putting each flag auth struct into each db auth struct, we will just pass through the
+	// auth map to the Team struct
 
 	var gitHubAuth *db.GitHubAuth
 	if cmd.Authentication.GitHubAuth.IsConfigured() {

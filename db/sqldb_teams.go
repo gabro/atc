@@ -82,51 +82,7 @@ func (db *SQLDB) CreateDefaultTeamIfNotExists() error {
 }
 
 func (db *SQLDB) CreateTeam(team Team) (SavedTeam, error) {
-	jsonEncodedBasicAuth, err := team.BasicAuth.EncryptedJSON()
-	if err != nil {
-		return SavedTeam{}, err
-	}
-
-	var gitHubAuth *GitHubAuth
-	if team.GitHubAuth != nil && team.GitHubAuth.ClientID != "" && team.GitHubAuth.ClientSecret != "" {
-		gitHubAuth = team.GitHubAuth
-	}
-	jsonEncodedGitHubAuth, err := json.Marshal(gitHubAuth)
-	if err != nil {
-		return SavedTeam{}, err
-	}
-
-	jsonEncodedUAAAuth, err := json.Marshal(team.UAAAuth)
-	if err != nil {
-		return SavedTeam{}, err
-	}
-
-	jsonEncodedGenericOAuth, err := json.Marshal(team.GenericOAuth)
-	if err != nil {
-		return SavedTeam{}, err
-	}
-
-	savedTeam, err := scanTeam(db.conn.QueryRow(`
-	INSERT INTO teams (
-    name, basic_auth, github_auth, uaa_auth, genericoauth_auth
-	) VALUES (
-		$1, $2, $3, $4, $5
-	)
-	RETURNING id, name, admin, basic_auth, github_auth, uaa_auth, genericoauth_auth
-	`, team.Name, jsonEncodedBasicAuth, string(jsonEncodedGitHubAuth), string(jsonEncodedUAAAuth), string(jsonEncodedGenericOAuth)))
-	if err != nil {
-		return SavedTeam{}, err
-	}
-
-	createTableString := fmt.Sprintf(`
-		CREATE TABLE team_build_events_%d ()
-		INHERITS (build_events);`, savedTeam.ID)
-	_, err = db.conn.Exec(createTableString)
-	if err != nil {
-		return SavedTeam{}, err
-	}
-
-	return savedTeam, nil
+	return SavedTeam{}, errors.New("AH")
 }
 
 func scanTeam(rows scannable) (SavedTeam, error) {
@@ -177,6 +133,38 @@ func scanTeam(rows scannable) (SavedTeam, error) {
 	return savedTeam, nil
 }
 
+//func scanTeam(rows scannable) (SavedTeam, error) {
+//	var basicAuth, auth sql.NullString
+//	var savedTeam SavedTeam
+//
+//	err := rows.Scan(
+//		&savedTeam.ID,
+//		&savedTeam.Name,
+//		&savedTeam.Admin,
+//		&basicAuth,
+//		&auth,
+//	)
+//	if err != nil {
+//		return savedTeam, err
+//	}
+//
+//	if basicAuth.Valid {
+//		err = json.Unmarshal([]byte(basicAuth.String), &savedTeam.BasicAuth)
+//		if err != nil {
+//			return savedTeam, err
+//		}
+//	}
+//
+//	if auth.Valid {
+//		err = json.Unmarshal([]byte(auth.String), &savedTeam.Auth)
+//		if err != nil {
+//			return savedTeam, err
+//		}
+//	}
+//
+//	return savedTeam, nil
+//}
+//
 func (db *SQLDB) DeleteTeamByName(teamName string) error {
 	var id sql.NullInt64
 	err := db.conn.QueryRow(`

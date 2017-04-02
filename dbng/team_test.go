@@ -1,7 +1,10 @@
 package dbng_test
 
 import (
+	"encoding/json"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/concourse/atc"
@@ -759,6 +762,152 @@ var _ = Describe("Team", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(createdContainer).To(BeNil())
 				Expect(creatingContainer).To(BeNil())
+			})
+		})
+	})
+
+	Describe("Updating Auth", func() {
+		var basicAuth *atc.BasicAuth
+		var authProvider map[string]*json.RawMessage
+
+		BeforeEach(func() {
+			basicAuth = &atc.BasicAuth{
+				BasicAuthUsername: "fake user",
+				BasicAuthPassword: "no, bad",
+			}
+
+			data := []byte(`{"credit_card": "please"}`)
+			authProvider["fake-provider"] = (*json.RawMessage)(&data)
+		})
+
+		Describe("UpdateBasicAuth", func() {
+			It("saves basic auth team info without overwriting the github auth", func() {
+				_, err := teamDB.UpdateGitHubAuth(gitHubAuth)
+				Expect(err).NotTo(HaveOccurred())
+
+				savedTeam, err := teamDB.UpdateBasicAuth(basicAuth)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(savedTeam.GitHubAuth).To(Equal(gitHubAuth))
+			})
+
+			It("saves basic auth team info without overwriting the cf auth", func() {
+				_, err := teamDB.UpdateUAAAuth(uaaAuth)
+				Expect(err).NotTo(HaveOccurred())
+
+				savedTeam, err := teamDB.UpdateBasicAuth(basicAuth)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(savedTeam.UAAAuth).To(Equal(uaaAuth))
+			})
+
+			It("saves basic auth team info without overwriting the Generic OAuth info", func() {
+				_, err := teamDB.UpdateGenericOAuth(genericOAuth)
+				Expect(err).NotTo(HaveOccurred())
+
+				savedTeam, err := teamDB.UpdateBasicAuth(basicAuth)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(savedTeam.GenericOAuth).To(Equal(genericOAuth))
+			})
+
+			It("saves basic auth team info to the existing team", func() {
+				savedTeam, err := teamDB.UpdateBasicAuth(basicAuth)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(savedTeam.BasicAuth.BasicAuthUsername).To(Equal(basicAuth.BasicAuthUsername))
+				Expect(bcrypt.CompareHashAndPassword([]byte(savedTeam.BasicAuth.BasicAuthPassword),
+					[]byte(basicAuth.BasicAuthPassword))).To(BeNil())
+			})
+
+			It("nulls basic auth when has a blank username", func() {
+				basicAuth.BasicAuthUsername = ""
+				savedTeam, err := teamDB.UpdateBasicAuth(basicAuth)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(savedTeam.BasicAuth).To(BeNil())
+			})
+
+			It("nulls basic auth when has a blank password", func() {
+				basicAuth.BasicAuthPassword = ""
+				savedTeam, err := teamDB.UpdateBasicAuth(basicAuth)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(savedTeam.BasicAuth).To(BeNil())
+			})
+		})
+
+		Describe("UpdateGitHubAuth", func() {
+			It("saves github auth team info to the existing team", func() {
+				savedTeam, err := teamDB.UpdateGitHubAuth(gitHubAuth)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(savedTeam.GitHubAuth).To(Equal(gitHubAuth))
+			})
+
+			It("nulls github auth when has a blank clientSecret", func() {
+				gitHubAuth.ClientSecret = ""
+				savedTeam, err := teamDB.UpdateGitHubAuth(gitHubAuth)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(savedTeam.GitHubAuth).To(BeNil())
+			})
+
+			It("nulls github auth when has a blank clientID", func() {
+				gitHubAuth.ClientID = ""
+				savedTeam, err := teamDB.UpdateGitHubAuth(gitHubAuth)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(savedTeam.GitHubAuth).To(BeNil())
+			})
+
+			It("saves github auth team info without over writing the basic auth", func() {
+				_, err := teamDB.UpdateBasicAuth(basicAuth)
+				Expect(err).NotTo(HaveOccurred())
+
+				savedTeam, err := teamDB.UpdateGitHubAuth(gitHubAuth)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(savedTeam.BasicAuth.BasicAuthUsername).To(Equal(basicAuth.BasicAuthUsername))
+				Expect(bcrypt.CompareHashAndPassword([]byte(savedTeam.BasicAuth.BasicAuthPassword),
+					[]byte(basicAuth.BasicAuthPassword))).To(BeNil())
+			})
+
+			It("saves github auth team info without over writing the cf auth", func() {
+				_, err := teamDB.UpdateUAAAuth(uaaAuth)
+				Expect(err).NotTo(HaveOccurred())
+
+				savedTeam, err := teamDB.UpdateGitHubAuth(gitHubAuth)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(savedTeam.UAAAuth).To(Equal(uaaAuth))
+			})
+
+			It("saves github auth team info without over writing the Generic OAuth info", func() {
+				_, err := teamDB.UpdateGenericOAuth(genericOAuth)
+				Expect(err).NotTo(HaveOccurred())
+
+				savedTeam, err := teamDB.UpdateGitHubAuth(gitHubAuth)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(savedTeam.GenericOAuth).To(Equal(genericOAuth))
+			})
+		})
+
+		Describe("UpdateUAAAuth", func() {
+			It("saves cf auth team info to the existing team", func() {
+				savedTeam, err := teamDB.UpdateUAAAuth(uaaAuth)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(savedTeam.UAAAuth).To(Equal(uaaAuth))
+			})
+		})
+
+		Describe("UpdateGenericOAuth", func() {
+			It("saves generic oauth info to the existing team", func() {
+				savedTeam, err := teamDB.UpdateGenericOAuth(genericOAuth)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(savedTeam.GenericOAuth).To(Equal(genericOAuth))
 			})
 		})
 	})
